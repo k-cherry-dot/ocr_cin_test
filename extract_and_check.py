@@ -155,7 +155,7 @@ def extract_from_image(image_path):
     return data
 
 
-# comparison part (uses csv)
+# comparison part (uses csv) (works now)
 
 def normalize_date(date_str):
     """
@@ -310,7 +310,6 @@ def compare_with_csv(extracted: dict, csv_path: str, similarity_threshold: float
 def print_detailed_comparison(comparison_result):
     """Print a detailed comparison report"""
     print("DETAILED COMPARISON REPORT")
-    print("=" * 60)
 
     if not comparison_result["found_row"]:
         print("No matching record found in CSV")
