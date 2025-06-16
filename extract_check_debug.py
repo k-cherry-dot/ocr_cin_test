@@ -75,67 +75,64 @@ def ocr_mrz_lines(processed_img):
 
 def parse_mrz_data(line1, line2, line3):
     """
-    given three 30-char mrz lines, parse out:
-      - card_number (positions 16–23 on line1, eight chars total)
-      - date_of_birth (positions 0–5 on line2, as yyyy-mm-dd)
-      - gender (position 7 on line2)
-      - surname & given_names from line3
+    parse three 30-char mrz lines to extract:
+      - card_number: the 8-char id that follows a single '<' + one filler char
+      - date_of_birth: positions 0–5 on line2 → yyyy-mm-dd
+      - gender: position 7 on line2
+      - surname & given_names from line3 (split on '<<')
 
-    this version also “cleans up” any stray 'x' → '<' so chevrons are real,
-    then takes only the initial contiguous run of a–z characters for the given name,
-    dropping any trailing garbage.
+    this uses regex for card_number instead of fixed positions.
     """
-    # 1) normalize ocr's 'x' → '<' (chevrons)
+    # normalize any stray 'x' → '<'
     line1 = line1.replace("X", "<")
     line3 = line3.replace("X", "<")
 
-    # 2) card number: take exactly 8 chars from positions [16:24] of line1, then strip '<'
-    raw_card = line1[16:24]
-    card_number = raw_card.replace("<", "")
+    # ─── extract card_number via regex ──────────────────────────────────
+    # look for: one '<', then exactly one filler char, then 8 alphanumerics
+    m = re.search(r"<.(?P<id>[A-Z0-9]{8})", line1)
+    if m:
+        card_number = m.group("id")
+    else:
+        # fallback to the old slice if regex fails
+        raw_card = line1[16:24]
+        card_number = raw_card.replace("<", "")
 
-    # 3) date of birth (yy mm dd → yyyy-mm-dd)
-    dob_raw = line2[0:6]  # e.g. "040513"
+    # ─── date of birth (yy mm dd → yyyy-mm-dd) ────────────────────────
+    dob_raw = line2[0:6]
     try:
         yy = int(dob_raw[0:2])
-        # assume anything 00–25 → 2000+, else 1900+
-        if yy <= 25:
-            year = 2000 + yy
-        else:
-            year = 1900 + yy
+        year = 2000 + yy if yy <= 25 else 1900 + yy
         month = int(dob_raw[2:4])
         day = int(dob_raw[4:6])
         date_of_birth = datetime(year, month, day).strftime("%Y-%m-%d")
     except:
         date_of_birth = f"invalid({dob_raw})"
 
-    # 4) gender is at line2[7]
+    # ─── gender ────────────────────────────────────────────────────────
     gender = line2[7] if line2[7] in ("M", "F") else "?"
 
-    # 5) name (line3). first drop any trailing '<' filler:
+    # ─── names: split surname vs given by '<<' ─────────────────────────
     name_field = line3.rstrip("<")
     if "<<" in name_field:
         surname_raw, given_raw = name_field.split("<<", 1)
     else:
         surname_raw, given_raw = name_field, ""
 
-    # 5a) clean surname: replace '<' → ' ' and strip
-    surname = surname_raw.replace("<", " ").strip()
+    # handle multiple surnames (single '<' separators)
+    surnames = [part for part in surname_raw.split("<") if part]
+    surname = " ".join(surnames)
 
-    # 5b) clean given names: only keep the leading a–z run
-    m = re.match(r"^([A-Z]+)", given_raw)
-    if m:
-        given_names = m.group(1)
-    else:
-        given_names = ""  # if no initial run of letters, just empty
+    # handle multiple given names (single '<' separators)
+    given_parts = [part for part in given_raw.split("<") if part]
+    given_names = " ".join(given_parts)
 
     return {
-        "card_number":    card_number,
-        "date_of_birth":  date_of_birth,
-        "gender":         gender,
-        "surname":        surname,
-        "given_names":    given_names
+        "card_number":   card_number,
+        "date_of_birth": date_of_birth,
+        "gender":        gender,
+        "surname":       surname,
+        "given_names":   given_names
     }
-
 
 def extract_from_image(image_path):
     """
