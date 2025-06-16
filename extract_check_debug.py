@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 from difflib import SequenceMatcher
 
-#debugged for multiple given names and surnames
+#now debugged for multiple given names and surnames
 
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
