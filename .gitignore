@@ -1,8 +1,14 @@
+#cropped and processed pics
 debug_mrz_crop.jpg
 debug_mrz_processed.jpg
+
+#pics
 id_card1.jpg
 id_card2.jpg
 id_card_2prenoms.jpg
+
+#cvs files
 master_list.csv
 master_list_1.csv
-idk.py
+
+
